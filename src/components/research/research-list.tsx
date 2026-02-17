@@ -1,5 +1,8 @@
 "use client"
 
+import { useState } from "react"
+import { geocodeJobPostcode, runEPCCheck, selectEPCCertificate, runCrimeSummary } from "@/actions/job-actions"
+import { toast } from "sonner"
 import { Source, PortalConfig, SourceCategory, SourceMode } from "@prisma/client"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -7,6 +10,7 @@ import { ExternalLink, AlertTriangle, Fingerprint, Info } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 interface ResearchListProps {
+    jobId?: string
     sources: Source[]
     portals: PortalConfig[]
 }
@@ -44,7 +48,64 @@ const CUSTOM_GROUPING: Record<string, string> = {
     "HERITAGE_GATEWAY": "Reference Library",
 }
 
-export function ResearchList({ sources, portals }: ResearchListProps) {
+export function ResearchList({ jobId, sources, portals }: ResearchListProps) {
+    const [loading, setLoading] = useState<string | null>(null)
+    const [epcRecords, setEpcRecords] = useState<any[] | null>(null)
+
+    const handleGeocode = async () => {
+        if (!jobId) return
+        setLoading("geocode")
+        try {
+            await geocodeJobPostcode(jobId)
+            toast.success("Position recorded")
+        } catch (e: any) {
+            toast.error(e.message)
+        } finally {
+            setLoading(null)
+        }
+    }
+
+    const handleEPCCheck = async () => {
+        if (!jobId) return
+        setLoading("EPC_OPEN_DATA_API")
+        try {
+            const records = await runEPCCheck(jobId)
+            if (records.length === 0) {
+                toast.info("No EPC records found for this postcode")
+            } else {
+                setEpcRecords(records)
+            }
+        } catch (e: any) {
+            toast.error(e.message)
+        } finally {
+            setLoading(null)
+        }
+    }
+
+    const handleCrimeCheck = async () => {
+        if (!jobId) return
+        setLoading("POLICE_CRIME")
+        try {
+            await runCrimeSummary(jobId)
+            toast.success("Crime summary aggregated")
+        } catch (e: any) {
+            toast.error(e.message)
+        } finally {
+            setLoading(null)
+        }
+    }
+
+    const handleSelectEPC = async (record: any) => {
+        if (!jobId) return
+        try {
+            await selectEPCCertificate(jobId, record)
+            toast.success("Certificate selection saved")
+            setEpcRecords(null)
+        } catch (e: any) {
+            toast.error(e.message)
+        }
+    }
+
     const sections = [
         "Core Automation",
         "Planning & Constraints",
@@ -144,15 +205,41 @@ export function ResearchList({ sources, portals }: ResearchListProps) {
                                             </div>
                                         </div>
 
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            className="w-full text-xs h-8 group-hover:bg-primary group-hover:text-white transition-all border border-transparent group-hover:border-primary"
-                                            onClick={() => window.open(source.url, '_blank')}
-                                        >
-                                            <ExternalLink className="mr-2 h-3 w-3" />
-                                            Launch Source
-                                        </Button>
+                                        <div className="flex flex-col gap-2">
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                className="w-full text-xs h-8 group-hover:bg-primary group-hover:text-white transition-all border border-transparent group-hover:border-primary"
+                                                onClick={() => window.open(source.url, '_blank')}
+                                            >
+                                                <ExternalLink className="mr-2 h-3 w-3" />
+                                                Launch Source
+                                            </Button>
+
+                                            {jobId && source.slug === "EPC_OPEN_DATA_API" && (
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="w-full text-xs h-8 bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 hover:text-blue-800"
+                                                    disabled={loading === source.slug}
+                                                    onClick={handleEPCCheck}
+                                                >
+                                                    {loading === source.slug ? "Checking..." : "Run EPC Check"}
+                                                </Button>
+                                            )}
+
+                                            {jobId && source.slug === "POLICE_CRIME" && (
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="w-full text-xs h-8 bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100 hover:text-purple-800"
+                                                    disabled={loading === source.slug}
+                                                    onClick={handleCrimeCheck}
+                                                >
+                                                    {loading === source.slug ? "Running..." : "Run Crime Summary"}
+                                                </Button>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
                             ))}
@@ -160,6 +247,33 @@ export function ResearchList({ sources, portals }: ResearchListProps) {
                     </div>
                 )
             })}
+
+            {/* EPC Record Selector */}
+            {epcRecords && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+                    <div className="bg-background border rounded-xl shadow-xl w-full max-w-2xl p-6">
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="font-bold text-lg">Select Correct EPC Record</h3>
+                            <Button variant="ghost" size="sm" onClick={() => setEpcRecords(null)}>Cancel</Button>
+                        </div>
+                        <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-2">
+                            {epcRecords.map((record, i) => (
+                                <div
+                                    key={i}
+                                    className="p-3 border rounded-lg hover:bg-muted/50 cursor-pointer transition-colors"
+                                    onClick={() => handleSelectEPC(record)}
+                                >
+                                    <div className="font-medium text-sm">{record.address}</div>
+                                    <div className="flex gap-2 mt-1">
+                                        <Badge variant="outline" className="text-[10px]">{record['current-energy-rating']}</Badge>
+                                        <span className="text-xs text-muted-foreground">{record['inspection-date']}</span>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }

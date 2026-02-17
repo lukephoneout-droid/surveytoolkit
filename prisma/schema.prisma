@@ -133,17 +133,36 @@ model PortalConfig {
 }
 
 model Job {
-  id              String       @id @default(cuid())
-  orgId           String
-  organisation    Organisation @relation(fields: [orgId], references: [id])
-  createdByUserId String
-  createdByUser   User         @relation("CreatedBy", fields: [createdByUserId], references: [id])
-  jobType         JobType
-  status          JobStatus    @default(NOT_STARTED)
-  addressLine1    String
-  town            String?
-  postcode        String?
-  clientName      String?
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
+  id                 String         @id @default(cuid())
+  orgId              String
+  organisation       Organisation   @relation(fields: [orgId], references: [id])
+  createdByUserId    String
+  createdByUser      User           @relation("CreatedBy", fields: [createdByUserId], references: [id])
+  jobType            JobType
+  status             JobStatus      @default(NOT_STARTED)
+  addressLine1       String
+  town               String?
+  postcode           String?
+  postcodeNormalised String?
+  lat                Float?
+  lon                Float?
+  geocodeSource      String?
+  geocodedAt         DateTime?
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+  findings           JobFinding[]
+}
+
+model JobFinding {
+  id             String       @id @default(cuid())
+  jobId          String
+  job            Job          @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  sourceSlug     String
+  status         JobStatus    @default(NOT_STARTED)
+  structuredJson Json?
+  error          String?
+  executedAt     DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@unique([jobId, sourceSlug])
 }
