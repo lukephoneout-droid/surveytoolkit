@@ -1,13 +1,9 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 enum PlanTier {
@@ -40,6 +36,7 @@ model Organisation {
   updatedAt DateTime @updatedAt
   users     User[]
   jobs      Job[]
+  portals   PortalConfig[]
 }
 
 model User {
@@ -91,6 +88,48 @@ model VerificationToken {
   expires    DateTime
 
   @@unique([identifier, token])
+}
+
+enum SourceCategory {
+  AUTHORITATIVE
+  DATASET
+  LOCAL_GIS
+  COMMERCIAL
+  INDICATIVE
+  REFERENCE
+}
+
+enum SourceMode {
+  AUTOMATED
+  ASSISTED
+}
+
+model Source {
+  id          String         @id @default(cuid())
+  slug        String         @unique
+  name        String
+  category    SourceCategory
+  mode        SourceMode
+  url         String
+  description String?
+  enabledFor  JobType[]      @default([SURVEY, VALUATION])
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+}
+
+model PortalConfig {
+  id                         String         @id @default(cuid())
+  orgId                      String
+  organisation               Organisation   @relation(fields: [orgId], references: [id])
+  authorityName              String
+  portalType                 SourceCategory @default(LOCAL_GIS)
+  label                      String
+  url                        String
+  isUserConfigurablePortal   Boolean        @default(true)
+  createdAt                  DateTime       @default(now())
+  updatedAt                  DateTime       @updatedAt
+
+  @@unique([orgId, authorityName, portalType])
 }
 
 model Job {

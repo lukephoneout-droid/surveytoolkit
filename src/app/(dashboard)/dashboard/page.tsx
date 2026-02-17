@@ -1,4 +1,17 @@
-export default function DashboardPage() {
+import { getDashboardStats } from "@/actions/job-actions"
+import { Badge } from "@/components/ui/badge"
+import { Briefcase, FileText, CheckCircle, Users } from "lucide-react"
+
+export default async function DashboardPage() {
+    const stats = await getDashboardStats()
+
+    const statCards = [
+        { label: "Active Jobs", value: stats.activeJobs, trend: "In Progress", icon: Briefcase },
+        { label: "Completed", value: stats.completedJobs, trend: "Total finished", icon: CheckCircle },
+        { label: "Total Research", value: stats.totalJobs, trend: "Cumulative", icon: FileText },
+        { label: "Team Members", value: "1", trend: "Active", icon: Users },
+    ]
+
     return (
         <div className="space-y-6">
             <div>
@@ -7,14 +20,12 @@ export default function DashboardPage() {
             </div>
 
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                {[
-                    { label: "Active Jobs", value: "12", trend: "+2 this week" },
-                    { label: "Pending Vault Items", value: "48", trend: "+12 today" },
-                    { label: "Completed Surveys", value: "156", trend: "Target: 200" },
-                    { label: "Organisation Users", value: "6", trend: "MEMBER" },
-                ].map((stat) => (
+                {statCards.map((stat) => (
                     <div key={stat.label} className="p-6 bg-card border rounded-xl shadow-sm hover:shadow-md transition-all hover:lift">
-                        <p className="text-sm font-medium text-muted-foreground mb-1">{stat.label}</p>
+                        <div className="flex items-center justify-between mb-2">
+                            <p className="text-sm font-medium text-muted-foreground">{stat.label}</p>
+                            <stat.icon className="h-4 w-4 text-primary opacity-70" />
+                        </div>
                         <p className="text-2xl font-bold">{stat.value}</p>
                         <p className="text-xs text-primary mt-1">{stat.trend}</p>
                     </div>
@@ -25,17 +36,23 @@ export default function DashboardPage() {
                 <div className="p-6 bg-card border rounded-xl shadow-sm">
                     <h2 className="text-lg font-semibold mb-4">Recent Jobs</h2>
                     <div className="space-y-4">
-                        {[1, 2, 3].map((i) => (
-                            <div key={i} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
-                                <div className="flex flex-col">
-                                    <span className="text-sm font-medium">123 Example Street, London</span>
-                                    <span className="text-xs text-muted-foreground uppercase">Survey • Valuation</span>
-                                </div>
-                                <div className="px-2 py-1 bg-amber-100 text-amber-700 text-[10px] font-bold rounded uppercase">
-                                    In Progress
-                                </div>
+                        {stats.recentJobs.length === 0 ? (
+                            <div className="text-center py-8 text-muted-foreground">
+                                No recent activity. Create your first job!
                             </div>
-                        ))}
+                        ) : (
+                            stats.recentJobs.map((job) => (
+                                <div key={job.id} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+                                    <div className="flex flex-col">
+                                        <span className="text-sm font-medium">{job.addressLine1}</span>
+                                        <span className="text-xs text-muted-foreground uppercase">{job.jobType}</span>
+                                    </div>
+                                    <Badge variant="outline" className="text-[10px] font-bold uppercase">
+                                        {job.status.replace("_", " ")}
+                                    </Badge>
+                                </div>
+                            ))
+                        )}
                     </div>
                 </div>
 

@@ -55,3 +55,50 @@ export async function getJobs() {
         },
     })
 }
+
+export async function getDashboardStats() {
+    const session = await auth()
+
+    if (!session?.user?.orgId) {
+        return {
+            activeJobs: 0,
+            completedJobs: 0,
+            totalJobs: 0,
+            recentJobs: [],
+        }
+    }
+
+    const [activeJobs, completedJobs, totalJobs] = await Promise.all([
+        db.job.count({ where: { orgId: session.user.orgId, status: "IN_PROGRESS" } }),
+        db.job.count({ where: { orgId: session.user.orgId, status: "COMPLETE" } }),
+        db.job.count({ where: { orgId: session.user.orgId } }),
+    ])
+
+    const recentJobs = await db.job.findMany({
+        where: { orgId: session.user.orgId },
+        orderBy: { createdAt: "desc" },
+        take: 5,
+    })
+
+    return {
+        activeJobs,
+        completedJobs,
+        totalJobs,
+        recentJobs,
+    }
+}
+
+export async function getSources() {
+    return await db.source.findMany({
+        orderBy: { name: "asc" }
+    })
+}
+
+export async function getPortalConfigs() {
+    const session = await auth()
+    if (!session?.user?.orgId) return []
+
+    return await db.portalConfig.findMany({
+        where: { orgId: session.user.orgId }
+    })
+}
