@@ -18,7 +18,7 @@ export function GeocodeButton({ jobId, isGeocoded }: { jobId: string; isGeocoded
         } catch (e: any) {
             toast.error(e.message)
         } finally {
-            setLoading(null)
+            setLoading(false)
         }
     }
 

@@ -166,3 +166,13 @@ model JobFinding {
 
   @@unique([jobId, sourceSlug])
 }
+
+model RateLimit {
+  id        String   @id @default(cuid())
+  userId    String
+  action    String
+  lastUsed  DateTime @default(now())
+  count     Int      @default(1)
+
+  @@unique([userId, action])
+}

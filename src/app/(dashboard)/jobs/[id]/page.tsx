@@ -5,7 +5,7 @@ import { getSources, getPortalConfigs } from "@/actions/job-actions"
 import { ResearchList } from "@/components/research/research-list"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { MapPin, Calendar, User, Building, Landmark } from "lucide-react"
+import { MapPin, Calendar, User, Building, Landmark, Info } from "lucide-react"
 import Link from "next/link"
 import { GeocodeButton } from "@/components/jobs/geocode-button"
 

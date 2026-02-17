@@ -5,6 +5,35 @@ import db from "@/lib/db"
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
 
+async function checkRateLimit(action: string, limit: number = 10, windowMs: number = 3600000) {
+    const session = await auth()
+    if (!session?.user?.id) throw new Error("Unauthorized")
+
+    const userId = session.user.id
+    const now = new Date()
+
+    const rateLimit = await db.rateLimit.findUnique({
+        where: { userId_action: { userId, action } }
+    })
+
+    if (rateLimit) {
+        const timePassed = now.getTime() - rateLimit.lastUsed.getTime()
+        if (timePassed < windowMs && rateLimit.count >= limit) {
+            throw new Error(`Rate limit exceeded for ${action}. Try again later.`)
+        }
+
+        const newCount = timePassed >= windowMs ? 1 : rateLimit.count + 1
+        await db.rateLimit.update({
+            where: { id: rateLimit.id },
+            data: { count: newCount, lastUsed: now }
+        })
+    } else {
+        await db.rateLimit.create({
+            data: { userId, action, count: 1, lastUsed: now }
+        })
+    }
+}
+
 const JobSchema = z.object({
     jobType: z.enum(["SURVEY", "VALUATION", "DEVELOPMENT"]),
     addressLine1: z.string().min(1, "Address is required"),
@@ -107,6 +136,8 @@ export async function geocodeJobPostcode(jobId: string) {
     const session = await auth()
     if (!session?.user?.orgId) throw new Error("Unauthorized")
 
+    await checkRateLimit("geocode", 5)
+
     const job = await db.job.findUnique({
         where: { id: jobId, orgId: session.user.orgId }
     })
@@ -135,6 +166,8 @@ export async function geocodeJobPostcode(jobId: string) {
 export async function runEPCCheck(jobId: string) {
     const session = await auth()
     if (!session?.user?.orgId) throw new Error("Unauthorized")
+
+    await checkRateLimit("epc_check", 5)
 
     const job = await db.job.findUnique({
         where: { id: jobId, orgId: session.user.orgId }
@@ -191,6 +224,8 @@ export async function selectEPCCertificate(jobId: string, certData: any) {
 export async function runCrimeSummary(jobId: string) {
     const session = await auth()
     if (!session?.user?.orgId) throw new Error("Unauthorized")
+
+    await checkRateLimit("crime_summary", 5)
 
     const job = await db.job.findUnique({
         where: { id: jobId, orgId: session.user.orgId }
