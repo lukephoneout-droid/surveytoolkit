@@ -1,0 +1,110 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum PlanTier {
+  FREE
+  PRO
+}
+
+enum Role {
+  ADMIN
+  MEMBER
+}
+
+enum JobType {
+  SURVEY
+  VALUATION
+  DEVELOPMENT
+}
+
+enum JobStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETE
+}
+
+model Organisation {
+  id        String   @id @default(cuid())
+  name      String
+  planTier  PlanTier @default(FREE)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  users     User[]
+  jobs      Job[]
+}
+
+model User {
+  id            String       @id @default(cuid())
+  name          String?
+  email         String?      @unique
+  emailVerified DateTime?
+  image         String?
+  role          Role         @default(MEMBER)
+  orgId         String
+  organisation  Organisation @relation(fields: [orgId], references: [id])
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  accounts      Account[]
+  sessions      Session[]
+  jobs          Job[]        @relation("CreatedBy")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Job {
+  id              String       @id @default(cuid())
+  orgId           String
+  organisation    Organisation @relation(fields: [orgId], references: [id])
+  createdByUserId String
+  createdByUser   User         @relation("CreatedBy", fields: [createdByUserId], references: [id])
+  jobType         JobType
+  status          JobStatus    @default(NOT_STARTED)
+  addressLine1    String
+  town            String?
+  postcode        String?
+  clientName      String?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+}
