@@ -218,7 +218,7 @@ async function main() {
         })
     }
 
-    console.log("Seeding demo organisation and portal configs...")
+    console.log("Seeding demo organisation, user, and job...")
 
     // Create a default organisation for demo purposes
     const org = await prisma.organisation.upsert({
@@ -230,50 +230,31 @@ async function main() {
         },
     })
 
-    const demoPortals = [
-        {
-            orgId: org.id,
-            authorityName: "BCP Council",
-            portalType: SourceCategory.LOCAL_GIS,
-            label: "BCP Conservation Areas Map",
-            url: "https://bcpcouncil.maps.arcgis.com/apps/webappviewer/index.html?id=e3c380d81a3e4b028a20fcbb2c160682",
+    const demoUser = await prisma.user.upsert({
+        where: { id: "demo-user" },
+        update: {},
+        create: {
+            id: "demo-user",
+            email: "demo@example.com",
+            name: "Demo Surveyor",
+            orgId: "demo-org",
         },
-        {
-            orgId: org.id,
-            authorityName: "BCP Council",
-            portalType: SourceCategory.AUTHORITATIVE,
-            label: "BCP Planning Portal",
-            url: "https://planning.bcpcouncil.gov.uk/Disclaimer?returnUrl=%2F",
-        },
-        {
-            orgId: org.id,
-            authorityName: "Dorset Council",
-            portalType: SourceCategory.AUTHORITATIVE,
-            label: "Dorset Planning Portal",
-            url: "https://planning.dorsetcouncil.gov.uk/disclaimer.aspx?returnURL=%2f",
-        },
-        {
-            orgId: org.id,
-            authorityName: "Dorset Council",
-            portalType: SourceCategory.LOCAL_GIS,
-            label: "Dorset Explorer",
-            url: "https://gi.dorsetcouncil.gov.uk/dorsetexplorer/",
-        },
-    ]
+    })
 
-    for (const portal of demoPortals) {
-        await prisma.portalConfig.upsert({
-            where: {
-                orgId_authorityName_portalType: {
-                    orgId: portal.orgId,
-                    authorityName: portal.authorityName,
-                    portalType: portal.portalType,
-                },
-            },
-            update: portal,
-            create: portal,
-        })
-    }
+    const demoJob = await prisma.job.upsert({
+        where: { id: "demo-job-1" },
+        update: {},
+        create: {
+            id: "demo-job-1",
+            orgId: "demo-org",
+            createdByUserId: "demo-user",
+            jobType: JobType.SURVEY,
+            status: "IN_PROGRESS",
+            addressLine1: "10 Downing Street",
+            town: "London",
+            postcode: "SW1A 2AA",
+        },
+    })
 
     console.log("Seeding finished.")
 }

@@ -9,12 +9,13 @@ import { MapPin, Calendar, User, Building, Landmark, Info } from "lucide-react"
 import Link from "next/link"
 import { GeocodeButton } from "@/components/jobs/geocode-button"
 
-export default async function JobDetailsPage({ params }: { params: { id: string } }) {
+export default async function JobDetailsPage({ params }: { params: Promise<{ id: string }> }) {
+    const { id } = await params
     const session = await auth()
     if (!session?.user?.orgId) return null
 
     const job = await db.job.findUnique({
-        where: { id: params.id, orgId: session.user.orgId },
+        where: { id, orgId: session.user.orgId },
         include: { findings: true }
     })
 
